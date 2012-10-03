@@ -7,8 +7,7 @@ document.body.appendChild(canvas);
 
 var keysDown = {};
 
-var planets = null;
-var fleets = null;
+var gameState = null;
 
 var clickedPlanets = null;
 var awaitingDestination = false;
@@ -32,8 +31,8 @@ function dist(x1, y1, x2, y2) {
 }
 
 function planetAtPoint(pos) {
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		if(dist(planet.x, planet.y, pos.x, pos.y) < planet.size) {
 			return planet;
 		}
@@ -49,8 +48,8 @@ function planetsInRectangle(start, end, player) {
 
 	var ret = [];
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		if(planet.owner != player) {
 			continue;
 		}
@@ -108,7 +107,7 @@ addEventListener("mousedown", function(e) {
 addEventListener("mousemove", function(e) {
 	if(selectStart != null) {
 		selectEnd = getMousePosition(canvas, e);
-		clickedPlanets = planetsInRectangle(selectStart, selectEnd, players[1]);
+		clickedPlanets = planetsInRectangle(selectStart, selectEnd, gameState.players[1]);
 	}
 }, false);
 
@@ -130,7 +129,7 @@ addEventListener("click", function(e) {
 			selectStart = mousePosition;
 		}
 		selectEnd = mousePosition;
-		clickedPlanets = planetsInRectangle(selectStart, selectEnd, players[1]);
+		clickedPlanets = planetsInRectangle(selectStart, selectEnd, gameState.players[1]);
 		if(clickedPlanets != null && clickedPlanets.length > 0) {
 			awaitingDestination = true;
 		} else {
@@ -151,8 +150,8 @@ function Player(name, color, productionFactor) {
 function pickSources(player) {
 	var ret = [];
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 
 		if(planet.owner === player && planet.ships >= 10) {
 			ret.push(planet);
@@ -178,15 +177,15 @@ function pickDest(player, sources) {
 	mx /= sources.length;
 	my /= sources.length;
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		if(planet.ships > maxShips) {
 			maxShips = planet.ships;
 		}
 	}
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		var value;
 
 		value = maxShips - planet.ships;
@@ -256,7 +255,7 @@ Planet.prototype.sendFactor = function(dest, factor) {
 	if(factor * this.ships >= 1) {
 		console.log()
 		var count = Math.floor((Math.round(this.ships) + Math.floor(1 / factor) - 1) * factor);
-		fleets.push(new Fleet(this, 40, count, dest));
+		gameState.fleets.push(new Fleet(this, 40, count, dest));
 		console.log("send from " + this.owner.name + " to " + dest.owner.name);
 		this.ships -= count;
 	}
@@ -281,11 +280,26 @@ function Fleet(src, speed, ships, dest) {
 	this.vy = vy * speed;
 }
 
-var players = [
-	new Player("neutral", "rgb(100, 100, 100)", 0),
-	new Player("p1", "rgb(10, 10, 200)", 1),
-	new Player("p2", "rgb(200, 10, 10)", 1)
-];
+function GameState() {
+	this.players = [
+		new Player("neutral", "rgb(100, 100, 100)", 0),
+		new Player("p1", "rgb(10, 10, 200)", 1),
+		new Player("p2", "rgb(200, 10, 10)", 1)
+	];
+	this.planets = []
+	this.fleets = []
+
+	for(var i = 0; i < this.players.length; i++) {
+		this.players[i].planetCount = 0;
+	}
+
+	for(var i = 0; i < 10; i++) {
+		this.planets.push(makeRandomPlanet(this.players[0]));
+	}
+
+	this.planets.push(new Planet(100, 100, 20, 5, this.players[1]));
+	this.planets.push(new Planet(400, 400, 20, 5, this.players[2]));
+}
 
 function makeRandomPlanet(owner) {
 	var ships = Math.floor(Math.random() * 50);
@@ -293,44 +307,32 @@ function makeRandomPlanet(owner) {
 }
 
 function reset() {
-	planets = []
-	fleets = []
+	gameState = new GameState();
 	clickedPlanets = null;
 	awaitingDestination = false;
-
-	for(var i = 0; i < players.length; i++) {
-		players[i].planetCount = 0;
-	}
-
-	for(var i = 0; i < 10; i++) {
-		planets.push(makeRandomPlanet(players[0]));
-	}
-
-	planets.push(new Planet(100, 100, 20, 5, players[1]));
-	planets.push(new Planet(400, 400, 20, 5, players[2]));
 };
 
 // Update game objects
 function update(dt) {
-	for(var i = 0; i < fleets.length; i++) {
-		var fleet = fleets[i];
+	for(var i = 0; i < gameState.fleets.length; i++) {
+		var fleet = gameState.fleets[i];
 		fleet.x += fleet.vx * dt;
 		fleet.y += fleet.vy * dt;
 		if(dist(fleet.x, fleet.y, fleet.dest.x, fleet.dest.y) < fleet.dest.size + 5) {
 			fleet.dest.arrival(fleet)
-			fleets.splice(i, 1);
+			gameState.fleets.splice(i, 1);
 			i--;
 		}
 	}
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		planet.ships += planet.productionRate * planet.owner.productionFactor * dt;
 	}
 
 	var activePlayers = 0;
-	for(var i = 0; i < players.length; i++) {
-		var player = players[i];
+	for(var i = 0; i < gameState.players.length; i++) {
+		var player = gameState.players[i];
 		if(player.productionFactor > 0 && player.planetCount > 0) {
 			activePlayers++;
 		}
@@ -339,7 +341,8 @@ function update(dt) {
 		reset();
 	}
 
-	players[2].aiTick();
+	gameState.players[1].aiTick();
+	gameState.players[2].aiTick();
 };
 
 // Draw everything
@@ -347,22 +350,22 @@ function render() {
 	ctx.fillStyle = "rgb(10, 10, 10)";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-	for(var i = 0; i < fleets.length; i++) {
-		var fleet = fleets[i];
+	for(var i = 0; i < gameState.fleets.length; i++) {
+		var fleet = gameState.fleets[i];
 		ctx.strokeStyle = fleet.owner.color;
 		ctx.fillStyle = fleet.owner.color;
 		ctx.beginPath();
 		ctx.arc(fleet.x, fleet.y, 3, 0, 2 * Math.PI);
 		ctx.fill();
-		var fleet = fleets[i];
+		var fleet = gameState.fleets[i];
 		ctx.moveTo(fleet.x, fleet.y);
 		var px = fleet.x + fleet.vx*10;
 		var py = fleet.y + fleet.vy*10;
 		ctx.lineTo(px, py);
 	}
 
-	for(var i = 0; i < planets.length; i++) {
-		var planet = planets[i];
+	for(var i = 0; i < gameState.planets.length; i++) {
+		var planet = gameState.planets[i];
 		ctx.fillStyle = planet.owner.color;
 		ctx.beginPath();
 		ctx.arc(planet.x, planet.y, planet.size, 0, 2 * Math.PI);
