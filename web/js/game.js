@@ -298,6 +298,10 @@ function reset() {
 	clickedPlanets = null;
 	awaitingDestination = false;
 
+	for(var i = 0; i < players.length; i++) {
+		players[i].planetCount = 0;
+	}
+
 	for(var i = 0; i < 10; i++) {
 		planets.push(makeRandomPlanet(players[0]));
 	}
