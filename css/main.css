@@ -1,0 +1,16 @@
+body {
+    align-content: center;    
+}
+
+#mainview {
+    float: none;
+    display: table;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#gameview {
+    width: 512px;
+    height: 512px;
+    padding-top: 5px;
+}
