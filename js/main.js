@@ -267,7 +267,7 @@ Game = function(viewCssSelector) {
   Planet.prototype.claimedBy = function(owner) {
     this.owner.planetCount--;
     console.log("player " + this.owner.name + " has " + this.owner.planetCount + " planets");
-    owner.planetCount++;
+    owner.planetCount++;  
     this.owner = owner;
   };
 
